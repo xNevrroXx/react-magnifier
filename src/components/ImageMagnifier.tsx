@@ -23,6 +23,7 @@ interface IImageMagnifierProps {
     approximation?: number,
     // max length of the approximate area in px, default is 600
     maxLengthSideApproximateArea?: number,
+    alt?: string
 }
 
 const ImageMagnifier: FC<IImageMagnifierProps> = ({
@@ -35,7 +36,8 @@ const ImageMagnifier: FC<IImageMagnifierProps> = ({
                                                       topPositioningMagnifier,
                                                       colorMagnifierArea,
                                                       boxShadowMagnifierArea,
-                                                      borderMagnifierArea
+                                                      borderMagnifierArea,
+                                                      alt
 }) => {
     const magnifierAreaRef = useRef<HTMLDivElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -94,7 +96,7 @@ const ImageMagnifier: FC<IImageMagnifierProps> = ({
                 <img ref={el => {
                     resizeImageObserverRef.current = el;
                     imageRef.current = el;
-                }} src={imageSrc} alt="image" style={{display: "block", maxHeight: maxHeightContent, maxWidth: "100%"}}/>
+                }} src={imageSrc} alt={alt} style={{display: "block", maxHeight: maxHeightContent, maxWidth: "100%"}}/>
                 <div
                     ref={el => {
                         magnifierAreaRef.current = el;
@@ -104,8 +106,8 @@ const ImageMagnifier: FC<IImageMagnifierProps> = ({
                         position: "absolute",
                         left: offsetMagnifierArea ? offsetMagnifierArea.left : 0,
                         top: offsetMagnifierArea ? offsetMagnifierArea.top : 0,
-                        width: maxSizeMagnifierArea.width,
-                        height: maxSizeMagnifierArea.height,
+                        width: magnifierAreaSizes.width,
+                        height: magnifierAreaSizes.height,
                         border: borderMagnifierArea ? borderMagnifierArea : "none",
                         backgroundColor: colorMagnifierArea ? colorMagnifierArea : "rgb(0 0 0 / 30%)",
                         boxShadow: boxShadowMagnifierArea ? boxShadowMagnifierArea : "none"
