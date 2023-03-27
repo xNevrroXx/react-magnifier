@@ -1,74 +1,92 @@
-import React, {FC, useCallback, useRef, useState} from 'react';
+import React, {FC, useCallback, useEffect, useRef, useState} from 'react';
 // own modules
-import ImageMagnifierArea from "./ImageMagnifierArea";
+import ApproximateArea from "./ApproximateArea";
 import {useResizeObserver} from "../hooks/useResizeObserver";
 
 type TSizes = {width: number, height: number};
 
 interface IImageMagnifierProps {
     imageSrc: string,
-    approximation?: number,
-    maxLengthSide?: number,
     maxHeightContent: number,
-    maxSizeMagnifier: { width: string, height: string }
+    // size of the magnifier area on the image in px
+    maxSizeMagnifierArea: { width: number, height: number },
+    // absolute positioning of the magnifier relative to the left edge of the window
+    leftPositioningMagnifier: string,
+    // absolute positioning of the magnifier relative to the top edge of the window
+    topPositioningMagnifier: string,
+    // color of the magnifier place on the content, default is "rgb(0 0 0 / 30%)"
+    colorMagnifierArea?: string,
+    // border color of the magnifier place on the content, default is "none"
+    borderMagnifierArea?: string,
+    // box shadow of the magnifier place on the content, default is "none"
+    boxShadowMagnifierArea?: string,
+    approximation?: number,
+    // max length of the approximate area in px, default is 600
+    maxLengthSideApproximateArea?: number,
 }
 
-const ImageMagnifier: FC<IImageMagnifierProps> = ({imageSrc, approximation, maxLengthSide, maxHeightContent, maxSizeMagnifier}) => {
+const ImageMagnifier: FC<IImageMagnifierProps> = ({
+                                                      imageSrc,
+                                                      approximation,
+                                                      maxLengthSideApproximateArea,
+                                                      maxHeightContent,
+                                                      maxSizeMagnifierArea,
+                                                      leftPositioningMagnifier,
+                                                      topPositioningMagnifier,
+                                                      colorMagnifierArea,
+                                                      boxShadowMagnifierArea,
+                                                      borderMagnifierArea
+}) => {
     const magnifierAreaRef = useRef<HTMLDivElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const imageRef = useRef<HTMLImageElement | null>(null);
     const [isActiveMagnifier, setIsActiveMagnifier] = useState<boolean>(false);
     const [imageSizes, setImageSizes] = useState<TSizes | null>(null);
-    const [magnifierAreaSizes, setMagnifierAreaSizes] = useState<{width: number, height: number, left: number, top: number}>({
-        width: parseFloat(maxSizeMagnifier.width),
-        height: parseFloat(maxSizeMagnifier.height),
-        left: 0,
-        top: 0,
+    const [magnifierAreaSizes, setMagnifierAreaSizes] = useState<TSizes>({
+        width: maxSizeMagnifierArea.width,
+        height: maxSizeMagnifierArea.height,
     });
+    const [offsetMagnifierArea, setOffsetMagnifierArea] = useState<{left: number, top: number}>({left: 0, top: 0});
     const resizeImageObserverRef = useResizeObserver((target) => {
         setImageSizes({width: target.getBoundingClientRect().width, height: target.getBoundingClientRect().height});
+    })
 
-        if (!magnifierAreaSizes) return;
-        if (target.getBoundingClientRect().width > magnifierAreaSizes.width) {
+    useEffect(() => {
+        // if image width or height is bigger than side of the magnifier area
+        if (!imageSizes || !imageSizes.width || !imageSizes.height) return;
+
+        if (imageSizes.width < magnifierAreaSizes.width) {
             setMagnifierAreaSizes({
                 ...magnifierAreaSizes,
-                width: target.getBoundingClientRect().width
+                width: imageSizes.width
             })
         }
-        if (target.getBoundingClientRect().height > magnifierAreaSizes.height) {
+        if (imageSizes.height < magnifierAreaSizes.height) {
             setMagnifierAreaSizes({
                 ...magnifierAreaSizes,
-                height: target.getBoundingClientRect().height
+                height: imageSizes.height
             })
         }
-    })
-    const resizeMagnifierObserverRef = useResizeObserver((target) => {
-        setMagnifierAreaSizes({
-            ...magnifierAreaSizes,
-            width: target.getBoundingClientRect().width,
-            height: target.getBoundingClientRect().height
-        })
-    })
+    }, [imageSizes])
 
     const onMouseMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-        if (!imageRef.current) throw new Error("imageRef.current image cannot be null");
+        if (!imageSizes) return;
         if (!containerRef.current) throw new Error("containerRef.current image magnifier cannot be null");
         if (!magnifierAreaRef.current) throw new Error("magnifierAreaRef.current image cannot be null");
 
         setIsActiveMagnifier(true);
 
-        const maxMagnifierAreaLeft = imageRef.current.getBoundingClientRect().width - (magnifierAreaRef.current.getBoundingClientRect().width);
-        const maxMagnifierAreaTop = imageRef.current.getBoundingClientRect().height - (magnifierAreaRef.current.getBoundingClientRect().height);
+        const maxMagnifierAreaLeft = imageSizes.width - magnifierAreaSizes.width;
+        const maxMagnifierAreaTop = imageSizes.height - magnifierAreaSizes.height;
 
-        const magnifierAreaLeft = event.pageX - containerRef.current.getBoundingClientRect().left - (magnifierAreaRef.current.getBoundingClientRect().width * 0.5);
-        const magnifierAreaTop = event.pageY - containerRef.current.getBoundingClientRect().top - (magnifierAreaRef.current.getBoundingClientRect().height * 0.5);
+        const magnifierAreaLeft = event.pageX - containerRef.current.getBoundingClientRect().left - (magnifierAreaSizes.width * 0.5);
+        const magnifierAreaTop = event.pageY - containerRef.current.getBoundingClientRect().top - (magnifierAreaSizes.height * 0.5);
 
-        setMagnifierAreaSizes({
-            ...magnifierAreaSizes,
+        setOffsetMagnifierArea({
             left: maxMagnifierAreaLeft > (magnifierAreaLeft > 0 ? magnifierAreaLeft : 0) ? (magnifierAreaLeft > 0 ? magnifierAreaLeft : 0) : maxMagnifierAreaLeft,
             top: maxMagnifierAreaTop > (magnifierAreaTop > 0 ? magnifierAreaTop : 0) ? (magnifierAreaTop > 0 ? magnifierAreaTop : 0) : maxMagnifierAreaTop
         })
-    }, [])
+    }, [imageSizes, magnifierAreaSizes])
 
     return (
         <>
@@ -80,29 +98,31 @@ const ImageMagnifier: FC<IImageMagnifierProps> = ({imageSrc, approximation, maxL
                 <div
                     ref={el => {
                         magnifierAreaRef.current = el;
-                        resizeMagnifierObserverRef.current = el;
                     }}
                     style={{
                         display: isActiveMagnifier ? "block" : "none",
                         position: "absolute",
-                        left: magnifierAreaSizes.left,
-                        top: magnifierAreaSizes.top,
-                        width: maxSizeMagnifier.width,
-                        height: maxSizeMagnifier.height,
-                        border: "solid 2px red",
-                        backgroundColor: "rgb(255 0 0 / 30%)"
+                        left: offsetMagnifierArea ? offsetMagnifierArea.left : 0,
+                        top: offsetMagnifierArea ? offsetMagnifierArea.top : 0,
+                        width: maxSizeMagnifierArea.width,
+                        height: maxSizeMagnifierArea.height,
+                        border: borderMagnifierArea ? borderMagnifierArea : "none",
+                        backgroundColor: colorMagnifierArea ? colorMagnifierArea : "rgb(0 0 0 / 30%)",
+                        boxShadow: boxShadowMagnifierArea ? boxShadowMagnifierArea : "none"
                     }}
                 />
             </div>
 
             {imageSizes &&
-                <ImageMagnifierArea
-                    isActive={(magnifierAreaSizes && isActiveMagnifier)}
+                <ApproximateArea
+                    left={leftPositioningMagnifier}
+                    top={topPositioningMagnifier}
+                    isActive={isActiveMagnifier}
                     imageSrc={imageSrc}
                     imageSizes={imageSizes}
-                    magnifierAreaSizes={magnifierAreaSizes}
+                    magnifierAreaSizes={{...magnifierAreaSizes, ...offsetMagnifierArea}}
                     approximation={approximation}
-                    maxLengthSide={maxLengthSide}
+                    maxLengthSide={maxLengthSideApproximateArea}
                 />
             }
         </>
